@@ -6,6 +6,8 @@ import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
+import java.util.Iterator;
+import java.util.Set;
 
 /**
  * @program: netty-wanxh
@@ -48,7 +50,33 @@ public class Reactor implements Runnable{
 
     @Override
     public void run() {
+        try {
+            while (!Thread.interrupted()) {
 
+                selector.select(); // 阻塞，直到有事件到达
+
+                // 拿到就绪通道 SelectionKey 的集合 (事件就绪的通道)
+                Set<SelectionKey> selectionKeys = selector.selectedKeys();
+                Iterator<SelectionKey> iterator = selectionKeys.iterator();
+                while (iterator.hasNext()){
+                    SelectionKey key = iterator.next();
+                    // 就绪事件的分发
+                    dispatch(key);
+                }
+                selectionKeys.clear();
+
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    void dispatch(SelectionKey key){
+        Runnable r = (Runnable) key.attachment();
+        if (r != null){
+            // 执行回调处理程序
+            r.run();
+        }
     }
 
     /**
