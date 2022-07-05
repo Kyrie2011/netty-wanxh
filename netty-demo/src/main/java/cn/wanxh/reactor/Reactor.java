@@ -94,6 +94,7 @@ public class Reactor implements Runnable{
                      * 将socketChannel注册到selector上，并关注一个读事件，
                      * 且为该事件注册一个处理程序(类似回调函数)
                      */
+                    new BasicHandler(socketChannel, selector);
 
                 }
 
