@@ -82,7 +82,15 @@ public class Reactor implements Runnable{
                 while (iterator.hasNext()){
                     SelectionKey key = iterator.next();
                     // 就绪事件的分发
-                    dispatch(key);
+                    dispatch(key);  // 由于handler可能阻塞，从而导致Reactor线程在此阻塞
+                    /**
+                     * 单线程Reactor模式缺点补充：
+                     *      当其中某个Handler阻塞时，会导致其他所有的Client的Handler
+                     *      都得不到执行，并且更严重的是，Handler的阻塞也会导致整个服务不能
+                     *      接收新的client请求(因为Acceptor得不到执行)。
+                     *      因此，单线程Reactor模型用的比较少。仅适用于Handler中业务处理组件
+                     *      快速完成的场景。
+                     */
                 }
                 selectionKeys.clear();
 
@@ -96,7 +104,7 @@ public class Reactor implements Runnable{
         Runnable r = (Runnable) key.attachment();  // 获取key关联的处理器
         if (r != null){
             // 执行处理程序
-            r.run();
+            r.run();  // handler可能阻塞
         }
     }
 
@@ -121,7 +129,7 @@ public class Reactor implements Runnable{
                      * 也可以使用多线程处理器
                      * 将IO的读写与业务处理分离，将业务逻辑交由线程池处理
                      */
-                    new MultiThreadHandler(selector, socketChannel);
+                    // new MultiThreadHandler(selector, socketChannel);
 
                 }
 
