@@ -17,17 +17,30 @@ import java.util.Set;
  */
 public class Reactor implements Runnable{
     /**
-     * 1, Reactor: 负责响应IO事件，当检测到一个新的事件，将其发送给相应的Handler去处理；
+     * Reactor的定义：是一个或多个输入事件的处理模式，用于处理并传递给服务处理程序的服务请求。
+     * 服务处理程序判断传入请求发生的事件，并将它们同步的分派给关联的请求处理程序。
+     *    Reactor线程：轮询通知发生连接或IO事件的通道，并分派合适的Handler处理
+     *    IO线程：执行实际的读写操作
+     *    业务线程：执行应用程序的业务逻辑
+     *
+     * 1, Reactor: 负责分发连接、读、写事件，当检测到一个新的事件，将其发送给相应的Handler去处理；
      *    新的事件包含连接建立就绪、读就绪、写就绪等
      * 2, Handler: 将自身(handler) 与事件绑定，负责事件的处理，
      *    完成channel的读入，完成处理业务逻辑后，负责将结果写出channel。
      *
-     * 单线程Reactor，Reactor和Handler处于一条线程执行
+     * 单线程Reactor，Handler在Reactor线程中执行。
+     * Handler处理的过程会导致Reactor变慢，此时可以将非IO操作从Reactor线程中分离(业务处理交由线程池)。
+     *
+     * Channels: 连接到文件、Socket等，支持非阻塞读取
+     * Buffers: 类似数组的对象，可由通道直接读取或写入
+     * Selectors: 通知哪组通道有事件就绪
+     * SelectionKeys: 维护IO事件的状态和绑定信息
+     *
      */
 
-    final Selector selector;
+    final Selector selector; // 选择器
 
-    final ServerSocketChannel serverSocket;
+    final ServerSocketChannel serverSocket; // 服务端socket通道
 
     public Reactor(int port) throws IOException {
         selector = Selector.open();
@@ -44,6 +57,14 @@ public class Reactor implements Runnable{
 
 
     public static void main(String[] args) {
+        try{
+            Thread reactor = new Thread(new Reactor(10086));
+            reactor.setName("Reactor");
+            reactor.start();
+            reactor.join();
+        }catch(Exception e){
+            e.printStackTrace();
+        }
 
     }
 
@@ -55,7 +76,7 @@ public class Reactor implements Runnable{
 
                 selector.select(); // 阻塞，直到有事件到达
 
-                // 拿到就绪通道 SelectionKey 的集合 (事件就绪的通道)
+                // 拿到所有就绪通道 SelectionKey 的集合 (所有就绪的通道)
                 Set<SelectionKey> selectionKeys = selector.selectedKeys();
                 Iterator<SelectionKey> iterator = selectionKeys.iterator();
                 while (iterator.hasNext()){
@@ -72,9 +93,9 @@ public class Reactor implements Runnable{
     }
 
     void dispatch(SelectionKey key){
-        Runnable r = (Runnable) key.attachment();
+        Runnable r = (Runnable) key.attachment();  // 获取key关联的处理器
         if (r != null){
-            // 执行回调处理程序
+            // 执行处理程序
             r.run();
         }
     }
@@ -94,7 +115,13 @@ public class Reactor implements Runnable{
                      * 将socketChannel注册到selector上，并关注一个读事件，
                      * 且为该事件注册一个处理程序(类似回调函数)
                      */
-                    new BasicHandler(socketChannel, selector);
+                    new BasicHandler(socketChannel, selector);  // IO的读写及业务处理均由该处理器完成
+
+                    /**
+                     * 也可以使用多线程处理器
+                     * 将IO的读写与业务处理分离，将业务逻辑交由线程池处理
+                     */
+                    new MultiThreadHandler(selector, socketChannel);
 
                 }
 

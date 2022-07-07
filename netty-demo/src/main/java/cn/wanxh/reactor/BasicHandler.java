@@ -12,7 +12,7 @@ import java.nio.charset.StandardCharsets;
  * @program: netty-wanxh
  * @Date: 2022/7/6 0:06
  * @Author: 阿左不是蜗牛
- * @Description: 单线程基本处理器：IO的读写以及业务的处理
+ * @Description: 单线程基本处理器：IO的读写以及业务的处理 均在Reactor线程中完成
  */
 public class BasicHandler implements  Runnable{
 
