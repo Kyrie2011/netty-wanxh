@@ -34,6 +34,7 @@ public class MultiThreadHandler extends  BasicHandler{
             if (inputIsComplete(n)) {
                 // 读取完毕后将后续的处理交给线程池
                 state = PROCESSING;
+                // 使用线程池异步执行
                 workPool.execute(new Processer());
 
 
@@ -63,6 +64,7 @@ public class MultiThreadHandler extends  BasicHandler{
 
             // 最后的发送还是交给Reactor线程处理
             state = SENDING;
+            // process完，注册事件为Write
             selectionKey.interestOps(SelectionKey.OP_WRITE);
 
             // 这里需要唤醒 Selector，因为当把处理交给 workPool 时，Reactor 线程已经阻塞在 select() 方法了， 注意

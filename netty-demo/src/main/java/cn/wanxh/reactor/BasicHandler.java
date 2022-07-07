@@ -36,7 +36,7 @@ public class BasicHandler implements  Runnable{
 
         // 将该通道注册到选择器上，并关注Read事件
         this.selectionKey = socketChannel.register(selector, SelectionKey.OP_READ);
-        // 事件回调
+        // 将Handler作为callback对象，事件回调
         selectionKey.attach(this);
 
         // 唤醒 select()方法 （不是必须）
