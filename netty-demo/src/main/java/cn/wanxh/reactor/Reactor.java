@@ -104,7 +104,7 @@ public class Reactor implements Runnable{
         Runnable r = (Runnable) key.attachment();  // 获取key关联的处理器
         if (r != null){
             // 执行处理程序
-            r.run();  // handler可能阻塞
+            r.run();  // handler可能阻塞 (不是Thread，仅一个Runnable对象)
         }
     }
 
@@ -122,6 +122,7 @@ public class Reactor implements Runnable{
                     /**
                      * 将socketChannel注册到selector上，并关注一个读事件，
                      * 且为该事件注册一个处理程序(类似回调函数)
+                     * 注意：此处只是一个Runnable，并非一个线程。单线程，从头到尾只有一个Reactor线程
                      */
                     new BasicHandler(socketChannel, selector);  // IO的读写及业务处理均由该处理器完成
 

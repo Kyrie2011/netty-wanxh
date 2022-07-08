@@ -138,8 +138,41 @@ public class BasicHandler implements  Runnable{
     }
 
 
-    protected void send(){
+    protected void send() throws IOException{
+        int written = -1;
+        output.flip(); // 切换到读取模式，判断是否有数据要发送
+        if (output.hasRemaining()) {
+            written = socketChannel.write(output);
+        }
 
+        // 检查连接是否处理完毕，是否断开连接
+        if (outputIsComplete(written)) {
+            selectionKey.channel().close();
+        }else {
+            // 否则继续读取
+            state = READING;
+            // 把提示信息发到界面
+            socketChannel.write(ByteBuffer.wrap("\r\nreactor>".getBytes()));
+            selectionKey.interestOps(SelectionKey.OP_READ);
+        }
+
+    }
+
+    /**
+     * 当输入一个空行，表示连接可以关闭了
+     * @param written
+     * @return
+     */
+    private boolean outputIsComplete(int written) {
+        if (written <= 0) {
+            // 用户只敲了回车，断开连接
+            return true;
+        }
+
+        // 清空旧数据，接着处理后续的请求
+        output.clear();
+        request.delete(0, request.length());
+        return false;
     }
 
 }
