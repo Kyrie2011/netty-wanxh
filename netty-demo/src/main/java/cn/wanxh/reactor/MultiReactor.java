@@ -1,8 +1,11 @@
 package cn.wanxh.reactor;
 
 import java.io.IOException;
+import java.net.InetSocketAddress;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
+import java.nio.channels.ServerSocketChannel;
+import java.nio.channels.SocketChannel;
 import java.util.Iterator;
 import java.util.Set;
 import java.util.concurrent.ConcurrentLinkedDeque;
@@ -22,6 +25,8 @@ public class MultiReactor {
     private static final int POOL_SIZE = 3;
 
     private int port;
+
+    int next = 0;
 
     // Reactor(Selector) 线程池，其中一个线程被 mainReactor 使用，剩余线程都被subReactor 使用
     static Executor selectPool = Executors.newFixedThreadPool(POOL_SIZE);
@@ -64,6 +69,54 @@ public class MultiReactor {
         mainReactorThread.setName("mainReactor");
         // 将ServerSocketChannel 注册到 mainReactor
 
+        selectPool.execute(mainReactorThread); // 执行主Reactor线程
+
+
+    }
+
+    /**
+     * 初始化并配置 ServerSocketChannel， 注册到mainReactor 的 Selector上
+     */
+    class Acceptor implements  Runnable {
+        final Selector sel;
+
+        final ServerSocketChannel serverSocketChannel;
+
+        public Acceptor(Selector selector,int port) throws IOException {
+            this.sel = selector;
+            serverSocketChannel = ServerSocketChannel.open();
+            serverSocketChannel.socket().bind(new InetSocketAddress(port));
+            // 设置成非阻塞模式
+            serverSocketChannel.configureBlocking(false);
+            // 注册到选择器并设置处理socket连接事件
+            SelectionKey sk = serverSocketChannel.register(sel, SelectionKey.OP_ACCEPT);
+            sk.attach(this);
+            System.out.println("mainReactor-" + "Acceptor: Listening on port: " + port);
+        }
+
+        @Override
+        public synchronized void run() {
+            try{
+                // 接收连接，非阻塞模式下，没有连接直接返回 null
+                SocketChannel sc = serverSocketChannel.accept();
+                if (sc != null) {
+                    System.out.println("mainReactor-" + "Acceptor: " + sc.socket().getLocalSocketAddress() +" 注册到 subReactor-" + next);
+                    // 将接收的连接注册到从 Reactor 上
+                    // 发现无法直接注册，一直获取不到锁，这是由于 从 Reactor 目前正阻塞在 select() 方法上，此方法已经
+                    // 锁定了 publicKeys（已注册的key)，直接注册会造成死锁
+
+                    // 如何解决呢，直接调用 wakeup，有可能还没有注册成功又阻塞了。这是一个多线程同步的问题，可以借助队列进行处理
+                    Reactor subReactor = subReactors[next];
+                    subReactor.register(new MultiThreadHandler(sc));
+                    if (++next == subReactors.length) {
+                        next = 0;
+                    }
+                }
+            }catch(Exception ex){
+                ex.printStackTrace();
+            }
+
+        }
     }
 
     static class Reactor implements Runnable {

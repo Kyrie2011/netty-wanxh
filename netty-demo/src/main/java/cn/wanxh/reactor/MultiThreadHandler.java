@@ -25,6 +25,10 @@ public class MultiThreadHandler extends  BasicHandler{
         super(socketChannel, selector);
     }
 
+    public MultiThreadHandler(SocketChannel socketChannel) {
+        super(socketChannel);
+    }
+
     @Override
     protected void read() throws IOException {
         synchronized (lock){
