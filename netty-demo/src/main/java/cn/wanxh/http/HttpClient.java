@@ -37,7 +37,8 @@ public class HttpClient {
                 @Override
                 protected void initChannel(SocketChannel socketChannel) throws Exception {
                     System.out.println(socketChannel.config());
-                    socketChannel.pipeline().addLast(new HttpResponseDecoder())
+                    socketChannel.pipeline()
+                            .addLast(new HttpResponseDecoder())
                             .addLast(new HttpRequestEncoder())
                             .addLast(new HttpClientHandler());
                 }

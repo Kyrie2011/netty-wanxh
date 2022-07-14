@@ -16,6 +16,7 @@ public class HttpClientHandler extends ChannelInboundHandlerAdapter {
 
             ByteBuf buf = content.content();
 
+            System.out.println("响应.....");
             System.out.println(buf.toString(io.netty.util.CharsetUtil.UTF_8));
 
             buf.release();
